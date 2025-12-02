@@ -1,0 +1,102 @@
+[
+  {
+    "hmdb_id": "HMDB0000001",
+    "name": "1-Methylhistidine",
+    "synonyms": ["1-MHis", "pi-methylhistidine", "1-Methyl-L-histidine"]
+  },
+  {
+    "hmdb_id": "HMDB0000122",
+    "name": "Glucose",
+    "synonyms": ["Dextrose", "Blood sugar", "D-Glucose", "Grape sugar"]
+  },
+  {
+    "hmdb_id": "HMDB0001893",
+    "name": "alpha-Tocopherol",
+    "synonyms": ["Vitamin E", "a-Tocopherol", "d-alpha-tocopherol"]
+  },
+  {
+    "hmdb_id": "HMDB0000357",
+    "name": "3-Hydroxybutyric acid",
+    "synonyms": ["Beta-hydroxybutyrate", "BHB", "3-HB"]
+  },
+  {
+    "hmdb_id": "HMDB0000574",
+    "name": "N-Acetylcysteine",
+    "synonyms": ["NAC", "Acetylcysteine", "N-acetyl-L-cysteine"]
+  },
+  {
+    "hmdb_id": "HMDB0000562",
+    "name": "Creatinine",
+    "synonyms": ["Creatine anhydride", "1-Methylglycocyamidine"]
+  },
+  {
+    "hmdb_id": "HMDB0000123",
+    "name": "Glycine",
+    "synonyms": ["Aminoacetic acid", "Gly", "Glycocoll"]
+  },
+  {
+    "hmdb_id": "HMDB0000161",
+    "name": "L-Alanine",
+    "synonyms": ["Alanine", "Ala", "2-Aminopropanoic acid"]
+  },
+  {
+    "hmdb_id": "HMDB0000064",
+    "name": "Creatine",
+    "synonyms": ["Methylguanidinoacetic acid", "N-Amidinosarcosine"]
+  },
+  {
+    "hmdb_id": "HMDB0000158",
+    "name": "L-Tyrosine",
+    "synonyms": ["Tyrosine", "Tyr", "4-Hydroxyphenylalanine"]
+  },
+  {
+    "hmdb_id": "HMDB0000159",
+    "name": "L-Phenylalanine",
+    "synonyms": ["Phenylalanine", "Phe", "beta-Phenyl-alpha-alanine"]
+  },
+  {
+    "hmdb_id": "HMDB0000162",
+    "name": "L-Proline",
+    "synonyms": ["Proline", "Pro", "Pyrrolidine-2-carboxylic acid"]
+  },
+  {
+    "hmdb_id": "HMDB0000167",
+    "name": "L-Threonine",
+    "synonyms": ["Threonine", "Thr", "2-Amino-3-hydroxybutyric acid"]
+  },
+  {
+    "hmdb_id": "HMDB0000172",
+    "name": "L-Isoleucine",
+    "synonyms": ["Isoleucine", "Ile", "2-Amino-3-methylpentanoic acid"]
+  },
+  {
+    "hmdb_id": "HMDB0000687",
+    "name": "L-Leucine",
+    "synonyms": ["Leucine", "Leu", "2-Amino-4-methylpentanoic acid"]
+  },
+  {
+    "hmdb_id": "HMDB0000883",
+    "name": "L-Valine",
+    "synonyms": ["Valine", "Val", "2-Amino-3-methylbutanoic acid"]
+  },
+  {
+    "hmdb_id": "HMDB0000191",
+    "name": "L-Aspartic acid",
+    "synonyms": ["Aspartic acid", "Asp", "Aspartate"]
+  },
+  {
+    "hmdb_id": "HMDB0000148",
+    "name": "L-Glutamic acid",
+    "synonyms": ["Glutamic acid", "Glu", "Glutamate"]
+  },
+  {
+    "hmdb_id": "HMDB0000641",
+    "name": "L-Glutamine",
+    "synonyms": ["Glutamine", "Gln", "2-Amino-4-carbamoylbutanoic acid"]
+  },
+  {
+    "hmdb_id": "HMDB0000696",
+    "name": "L-Methionine",
+    "synonyms": ["Methionine", "Met", "2-Amino-4-(methylthio)butanoic acid"]
+  }
+]
