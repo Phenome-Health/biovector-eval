@@ -205,3 +205,23 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Project-specific: Large data files
+data/
+results/
+logs/
+
+# Raw HMDB data
+hmdb_metabolites.zip
+hmdb_metabolites.xml
+*.xml.gz
+
+# Model artifacts
+*.npy
+*.faiss
+*.bin
+*.safetensors
+
+# HuggingFace cache (models downloaded at runtime)
+.cache/
+~/.cache/huggingface/
