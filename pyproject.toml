@@ -51,3 +51,30 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-v"
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "basic"
+# Exclude files with known third-party typing issues
+exclude = [
+    "create_hmdb_vector_database.py",  # Uses qdrant_client (no stubs)
+    "hmdb.py",  # Relative imports for external project
+    "tests/",  # Tests use mocks that don't match production types
+]
+# Ignore missing imports for libraries without type stubs
+reportMissingImports = "warning"
+reportMissingTypeStubs = false
+# Be lenient with third-party library types (faiss has no stubs)
+reportUnknownMemberType = false
+reportUnknownArgumentType = false
+reportUnknownVariableType = false
+# FAISS library doesn't have type stubs - ignore these errors
+reportAttributeAccessIssue = false
+reportCallIssue = false
+reportOptionalMemberAccess = false
+
+[dependency-groups]
+dev = [
+    "black>=25.11.0",
+    "pyright>=1.1.407",
+]
