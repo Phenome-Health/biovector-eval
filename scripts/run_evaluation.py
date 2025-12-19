@@ -9,7 +9,7 @@ Evaluates all combinations of:
 Total: 4 × 7 × 3 = 84 configurations
 
 Metrics:
-- Recall@1, Recall@5, Recall@10
+- Recall@1, Recall@5, Recall@10, Recall@20, Recall@50, Recall@100
 - MRR (Mean Reciprocal Rank)
 - Latency (P50, P95, P99)
 - Index size
@@ -59,10 +59,20 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 EVALUATION_DIMENSIONS: dict[str, list[str]] = {
-    "models": ["bge-m3", "sapbert", "biolord", "gte-qwen2"],
-    "index_types": ["flat", "hnsw", "sq8", "sq4", "pq", "ivf_flat", "ivf_pq"],
+    "models": ["bge-m3", "sapbert", "biolord", "gte-qwen2", "minilm"],
+    "index_types": ["flat", "hnsw", "hnsw_sq8", "hnsw_sq4", "hnsw_pq", "ivf_flat", "ivf_sq8", "ivf_sq4", "ivf_pq"],
     "strategies": ["single-primary", "single-pooled", "multi-vector"],
 }
+
+# Query categories for per-category metrics
+QUERY_CATEGORIES = [
+    "exact_match", "synonym_match", "fuzzy_match",
+    "greek_letter", "numeric_prefix", "special_prefix",
+    "arivale",  # Real-world metabolite names from Arivale data
+]
+
+# Recall@k values to compute per category
+K_VALUES = [1, 5, 10, 20, 50, 100]
 
 # Model slug mapping (for file paths)
 MODEL_SLUGS: dict[str, str] = {
@@ -70,6 +80,7 @@ MODEL_SLUGS: dict[str, str] = {
     "sapbert": "sapbert-from-pubmedbert-fulltext",
     "biolord": "biolord-2023",
     "gte-qwen2": "gte-qwen2-1.5b-instruct",
+    "minilm": "all-minilm-l6-v2",
 }
 
 # Model HuggingFace IDs
@@ -78,6 +89,7 @@ MODEL_IDS: dict[str, str] = {
     "sapbert": "cambridgeltl/SapBERT-from-PubMedBERT-fulltext",
     "biolord": "FremyCompany/BioLORD-2023",
     "gte-qwen2": "Alibaba-NLP/gte-Qwen2-1.5B-instruct",
+    "minilm": "sentence-transformers/all-MiniLM-L6-v2",
 }
 
 
@@ -186,7 +198,7 @@ def evaluate_configuration(
     queries: list[dict],
     indices_dir: Path,
     id_mapping: list[str],
-    k: int = 10,
+    k: int = 100,
 ) -> dict[str, Any] | None:
     """Evaluate a single configuration.
 
@@ -209,7 +221,7 @@ def evaluate_configuration(
 
     # Load index
     if config.is_multi_vector:
-        searcher = MultiVectorSearcher(index_path)
+        searcher = MultiVectorSearcher(index_path, index_type=config.index_type)
     else:
         index = load_index(index_path)
         # Set efSearch for HNSW-based indices
@@ -241,16 +253,36 @@ def evaluate_configuration(
     recall_1_scores: list[float] = []
     recall_5_scores: list[float] = []
     recall_10_scores: list[float] = []
+    recall_20_scores: list[float] = []
+    recall_50_scores: list[float] = []
+    recall_100_scores: list[float] = []
     mrr_scores: list[float] = []
+
+    # Per-category score tracking (all k values)
+    category_scores: dict[str, dict[str, list[float]]] = {
+        cat: {f"recall@{k}": [] for k in K_VALUES} for cat in QUERY_CATEGORIES
+    }
 
     for q in queries:
         expected = set(q["expected"])
         predictions = search_fn(q["query"], k)
 
+        # Aggregate scores
         recall_1_scores.append(recall_at_k(expected, predictions, 1))
         recall_5_scores.append(recall_at_k(expected, predictions, 5))
         recall_10_scores.append(recall_at_k(expected, predictions, 10))
+        recall_20_scores.append(recall_at_k(expected, predictions, 20))
+        recall_50_scores.append(recall_at_k(expected, predictions, 50))
+        recall_100_scores.append(recall_at_k(expected, predictions, 100))
         mrr_scores.append(mean_reciprocal_rank(expected, predictions))
+
+        # Per-category scores (all k values)
+        category = q.get("category", "exact_match")
+        if category in category_scores:
+            for k_val in K_VALUES:
+                category_scores[category][f"recall@{k_val}"].append(
+                    recall_at_k(expected, predictions, k_val)
+                )
 
     # Measure latency
     query_texts = [q["query"] for q in queries]
@@ -259,12 +291,26 @@ def evaluate_configuration(
     # Get index size
     index_size_mb = index_path.stat().st_size / 1024 / 1024
 
+    # Build per-category metrics
+    per_category_metrics: dict[str, float] = {}
+    for cat in QUERY_CATEGORIES:
+        for k_val in K_VALUES:
+            key = f"recall@{k_val}_{cat}"
+            scores = category_scores[cat][f"recall@{k_val}"]
+            if scores:
+                per_category_metrics[key] = round(float(np.mean(scores)), 4)
+            else:
+                per_category_metrics[key] = 0.0
+
     return {
         "config": config.to_dict(),
         "metrics": {
             "recall@1": round(float(np.mean(recall_1_scores)), 4),
             "recall@5": round(float(np.mean(recall_5_scores)), 4),
             "recall@10": round(float(np.mean(recall_10_scores)), 4),
+            "recall@20": round(float(np.mean(recall_20_scores)), 4),
+            "recall@50": round(float(np.mean(recall_50_scores)), 4),
+            "recall@100": round(float(np.mean(recall_100_scores)), 4),
             "mrr": round(float(np.mean(mrr_scores)), 4),
             "p50_ms": round(latency.p50_ms, 3),
             "p95_ms": round(latency.p95_ms, 3),
@@ -272,6 +318,8 @@ def evaluate_configuration(
             "mean_ms": round(latency.mean_ms, 3),
             "index_size_mb": round(index_size_mb, 1),
             "num_queries": len(queries),
+            # Per-category metrics
+            **per_category_metrics,
         },
     }
 

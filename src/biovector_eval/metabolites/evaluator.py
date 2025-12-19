@@ -77,6 +77,10 @@ METABOLITE_MODELS: dict[str, ModelConfig] = {
         name="ChemBERTa-MTR",
         model_id="DeepChem/ChemBERTa-77M-MTR",
     ),
+    "minilm": ModelConfig(
+        name="MiniLM-L6-v2",
+        model_id="sentence-transformers/all-MiniLM-L6-v2",
+    ),
 }
 
 
@@ -343,6 +347,7 @@ class MultiVectorSearcher:
         self,
         index_path: Path | str,
         id_mapping: list[str] | None = None,
+        index_type: str | None = None,
     ):
         """Initialize searcher.
 
@@ -350,10 +355,16 @@ class MultiVectorSearcher:
             index_path: Path to the .faiss index file.
             id_mapping: Optional list mapping index positions to HMDB IDs.
                        Required for single-vector indices without metadata.
+            index_type: Index type string (e.g., "hnsw_pq", "ivf_pq", "flat").
+                       Used to detect L2-metric indices that need score conversion.
         """
         index_path = Path(index_path)
         self.index, self.metadata = load_index_with_metadata(index_path)
         self._id_mapping = id_mapping
+        self._index_type = index_type
+        # HNSW+PQ uses L2 metric (lower=better) because IP causes FAISS segfaults
+        # All other indices use inner product (higher=better)
+        self._uses_l2_metric = index_type == "hnsw_pq"
 
     @property
     def is_multi_vector(self) -> bool:
@@ -416,12 +427,20 @@ class MultiVectorSearcher:
 
             meta = self.metadata[idx_str]
             hmdb_id = meta["hmdb_id"]
-            weight = meta["weight"]
+            weight = 1.0  # Use equal weighting for all tiers (ignore stored 0.9 for synonyms)
             tier = meta["tier"]
+
+            # Convert L2 distance to IP-equivalent score for PQ indices
+            # For L2-normalized vectors: d_L2² = 2 - 2·IP, so IP = 1 - d_L2²/2
+            # FAISS IndexHNSWPQ returns squared L2 distances
+            if self._uses_l2_metric:
+                score = 1.0 - (float(dist) / 2.0)
+            else:
+                score = float(dist)
 
             result = SearchResult(
                 hmdb_id=hmdb_id,
-                score=float(dist),
+                score=score,
                 tier=tier,
                 weight=weight,
             )

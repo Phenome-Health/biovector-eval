@@ -176,7 +176,7 @@ class TestHMDBGroundTruthGenerator:
             assert q.difficulty == "medium"
 
     def test_fuzzy_matches(self, sample_metabolites: list[dict]) -> None:
-        """Generates fuzzy match queries."""
+        """Generates fuzzy match queries with synthetic typos."""
         generator = HMDBGroundTruthGenerator(sample_metabolites, seed=42)
         queries = list(generator.generate_fuzzy_matches(n=3))
 
@@ -185,13 +185,30 @@ class TestHMDBGroundTruthGenerator:
             assert q.category == "fuzzy_match"
             assert len(q.expected) == 1
             assert q.difficulty == "hard"
-            # Query should be a prefix
-            assert len(q.query) <= 7
+            # Query should have typo notes
+            assert "Typo" in q.notes
+            # Extract original name from notes: "Typo (x) of 'Name'"
+            original = q.notes.split("'")[1]
+            # Query should be similar length to original (not a prefix)
+            assert abs(len(q.query) - len(original)) <= 3  # At most 3 char diff
+
+    def test_typo_generation(self, sample_metabolites: list[dict]) -> None:
+        """Typo generation creates valid mutations."""
+        generator = HMDBGroundTruthGenerator(sample_metabolites, seed=42)
+
+        # Test typo generation on a known name
+        test_name = "Glucose"
+        typo, changes = generator._generate_typo(test_name)
+
+        assert typo != test_name  # Should be different
+        assert len(typo) >= len(test_name) - 3  # Not too short
+        assert len(typo) <= len(test_name) + 3  # Not too long
+        assert changes  # Should have recorded changes
 
     def test_edge_cases(self, sample_metabolites: list[dict]) -> None:
-        """Generates edge case queries."""
+        """Generates edge case queries for each category."""
         generator = HMDBGroundTruthGenerator(sample_metabolites, seed=42)
-        queries = list(generator.generate_edge_cases(n=10))
+        queries = list(generator.generate_edge_cases(greek=5, numeric=5, special=5))
 
         # Should find alpha-Tocopherol (Greek), 3-Hydroxybutyric acid (numeric),
         # N-Acetylcysteine and L-Alanine (special prefix)
@@ -203,7 +220,9 @@ class TestHMDBGroundTruthGenerator:
     def test_full_dataset(self, sample_metabolites: list[dict]) -> None:
         """Generates complete dataset with all categories."""
         generator = HMDBGroundTruthGenerator(sample_metabolites, seed=42)
-        dataset = generator.generate_dataset(exact=2, synonym=2, fuzzy=2, edge=10)
+        dataset = generator.generate_dataset(
+            exact=2, synonym=2, fuzzy=2, greek=2, numeric=2, special=2
+        )
 
         assert len(dataset.queries) > 0
         categories = {q.category for q in dataset.queries}

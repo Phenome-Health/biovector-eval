@@ -114,13 +114,13 @@ def build_hnsw_index(
         FAISS HNSW index with embeddings added.
     """
     dimension = embeddings.shape[1]
-    index = faiss.IndexHNSWFlat(dimension, hnsw_m)
+    index = faiss.IndexHNSWFlat(dimension, hnsw_m, faiss.METRIC_INNER_PRODUCT)
     index.hnsw.efConstruction = ef_construction
     index.add(embeddings)
     return index
 
 
-def build_sq8_index(
+def build_hnsw_sq8_index(
     embeddings: np.ndarray,
     hnsw_m: int = 32,
 ) -> faiss.Index:
@@ -134,13 +134,13 @@ def build_sq8_index(
         FAISS HNSW+SQ8 index.
     """
     dimension = embeddings.shape[1]
-    index = faiss.IndexHNSWSQ(dimension, faiss.ScalarQuantizer.QT_8bit, hnsw_m)
+    index = faiss.IndexHNSWSQ(dimension, faiss.ScalarQuantizer.QT_8bit, hnsw_m, faiss.METRIC_INNER_PRODUCT)
     index.train(embeddings)
     index.add(embeddings)
     return index
 
 
-def build_sq4_index(
+def build_hnsw_sq4_index(
     embeddings: np.ndarray,
     hnsw_m: int = 32,
 ) -> faiss.Index:
@@ -154,18 +154,22 @@ def build_sq4_index(
         FAISS HNSW+SQ4 index.
     """
     dimension = embeddings.shape[1]
-    index = faiss.IndexHNSWSQ(dimension, faiss.ScalarQuantizer.QT_4bit, hnsw_m)
+    index = faiss.IndexHNSWSQ(dimension, faiss.ScalarQuantizer.QT_4bit, hnsw_m, faiss.METRIC_INNER_PRODUCT)
     index.train(embeddings)
     index.add(embeddings)
     return index
 
 
-def build_pq_index(
+def build_hnsw_pq_index(
     embeddings: np.ndarray,
     pq_m: int = 32,
     hnsw_m: int = 32,
 ) -> faiss.Index:
     """Build HNSW+PQ (product quantization) index.
+
+    Note: Uses L2 metric (default) because IndexHNSWPQ with METRIC_INNER_PRODUCT
+    causes segfaults in FAISS. Since embeddings are L2-normalized, L2 distance
+    is equivalent to inner product for ranking: d_L2 = 2 - 2*IP.
 
     Args:
         embeddings: Normalized float32 embeddings (N x D).
@@ -179,6 +183,7 @@ def build_pq_index(
     # Adjust pq_m if it doesn't divide evenly
     while dimension % pq_m != 0 and pq_m > 1:
         pq_m -= 1
+    # Don't use METRIC_INNER_PRODUCT - causes segfault in IndexHNSWPQ
     index = faiss.IndexHNSWPQ(dimension, pq_m, hnsw_m)
     index.train(embeddings)
     index.add(embeddings)
@@ -278,6 +283,108 @@ def build_ivf_pq_index(
     )
 
     # Train on embeddings (learns cluster centroids and PQ codebook)
+    index.train(embeddings)
+
+    # Add vectors
+    index.add(embeddings)
+
+    # Set nprobe for search
+    index.nprobe = nprobe
+
+    return index
+
+
+def build_ivf_sq8_index(
+    embeddings: np.ndarray,
+    nlist: int | None = None,
+    nprobe: int = 32,
+) -> faiss.Index:
+    """Build IVF+SQ8 index (clustering + 8-bit scalar quantization).
+
+    Combines IVF clustering with 8-bit scalar quantization. Provides ~4x
+    compression compared to IVFFlat while maintaining good accuracy.
+
+    Args:
+        embeddings: Normalized float32 embeddings (N x D).
+        nlist: Number of clusters. If None, uses sqrt(N) as default.
+        nprobe: Number of clusters to search.
+
+    Returns:
+        FAISS IVF+SQ8 index (trained and populated).
+    """
+    n_vectors, dimension = embeddings.shape
+
+    # Default nlist to sqrt(n) if not specified
+    if nlist is None:
+        nlist = max(1, int(np.sqrt(n_vectors)))
+
+    # Ensure nlist doesn't exceed number of vectors
+    nlist = min(nlist, n_vectors)
+
+    # Create quantizer (coarse search structure)
+    quantizer = faiss.IndexFlatIP(dimension)
+
+    # Create IVF+SQ8 index
+    index = faiss.IndexIVFScalarQuantizer(
+        quantizer,
+        dimension,
+        nlist,
+        faiss.ScalarQuantizer.QT_8bit,
+        faiss.METRIC_INNER_PRODUCT,
+    )
+
+    # Train on embeddings (learns cluster centroids and SQ parameters)
+    index.train(embeddings)
+
+    # Add vectors
+    index.add(embeddings)
+
+    # Set nprobe for search
+    index.nprobe = nprobe
+
+    return index
+
+
+def build_ivf_sq4_index(
+    embeddings: np.ndarray,
+    nlist: int | None = None,
+    nprobe: int = 32,
+) -> faiss.Index:
+    """Build IVF+SQ4 index (clustering + 4-bit scalar quantization).
+
+    Combines IVF clustering with 4-bit scalar quantization. Provides ~8x
+    compression compared to IVFFlat with some accuracy trade-off.
+
+    Args:
+        embeddings: Normalized float32 embeddings (N x D).
+        nlist: Number of clusters. If None, uses sqrt(N) as default.
+        nprobe: Number of clusters to search.
+
+    Returns:
+        FAISS IVF+SQ4 index (trained and populated).
+    """
+    n_vectors, dimension = embeddings.shape
+
+    # Default nlist to sqrt(n) if not specified
+    if nlist is None:
+        nlist = max(1, int(np.sqrt(n_vectors)))
+
+    # Ensure nlist doesn't exceed number of vectors
+    nlist = min(nlist, n_vectors)
+
+    # Create quantizer (coarse search structure)
+    quantizer = faiss.IndexFlatIP(dimension)
+
+    # Create IVF+SQ4 index
+    index = faiss.IndexIVFScalarQuantizer(
+        quantizer,
+        dimension,
+        nlist,
+        faiss.ScalarQuantizer.QT_4bit,
+        faiss.METRIC_INNER_PRODUCT,
+    )
+
+    # Train on embeddings (learns cluster centroids and SQ parameters)
     index.train(embeddings)
 
     # Add vectors

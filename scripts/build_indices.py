@@ -44,11 +44,13 @@ import numpy as np
 from biovector_eval.utils.persistence import (
     build_flat_index,
     build_hnsw_index,
+    build_hnsw_pq_index,
+    build_hnsw_sq4_index,
+    build_hnsw_sq8_index,
     build_ivf_flat_index,
     build_ivf_pq_index,
-    build_pq_index,
-    build_sq4_index,
-    build_sq8_index,
+    build_ivf_sq4_index,
+    build_ivf_sq8_index,
 )
 
 logging.basicConfig(
@@ -70,18 +72,18 @@ INDEX_TYPES: dict[str, dict[str, Any]] = {
         "description": "Graph-based ANN (IndexHNSWFlat)",
         "params": {"M": 32, "ef_construction": 200},
     },
-    "sq8": {
-        "builder": build_sq8_index,
+    "hnsw_sq8": {
+        "builder": build_hnsw_sq8_index,
         "description": "HNSW + 8-bit scalar quantization",
         "params": {},
     },
-    "sq4": {
-        "builder": build_sq4_index,
+    "hnsw_sq4": {
+        "builder": build_hnsw_sq4_index,
         "description": "HNSW + 4-bit scalar quantization",
         "params": {},
     },
-    "pq": {
-        "builder": build_pq_index,
+    "hnsw_pq": {
+        "builder": build_hnsw_pq_index,
         "description": "HNSW + product quantization",
         "params": {},
     },
@@ -93,6 +95,16 @@ INDEX_TYPES: dict[str, dict[str, Any]] = {
     "ivf_pq": {
         "builder": build_ivf_pq_index,
         "description": "Clustering + product quantization (IndexIVFPQ)",
+        "params": {},
+    },
+    "ivf_sq8": {
+        "builder": build_ivf_sq8_index,
+        "description": "Clustering + 8-bit scalar quantization (IndexIVFScalarQuantizer)",
+        "params": {},
+    },
+    "ivf_sq4": {
+        "builder": build_ivf_sq4_index,
+        "description": "Clustering + 4-bit scalar quantization (IndexIVFScalarQuantizer)",
         "params": {},
     },
 }
@@ -125,7 +137,7 @@ def parse_arguments(args: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--index-types",
         default="all",
-        help="Comma-separated index types or 'all'. Options: flat,hnsw,sq8,sq4,pq,ivf_flat,ivf_pq",
+        help="Comma-separated index types or 'all'. Options: flat,hnsw,hnsw_sq8,hnsw_sq4,hnsw_pq,ivf_flat,ivf_sq8,ivf_sq4,ivf_pq",
     )
     parser.add_argument(
         "--skip-existing",

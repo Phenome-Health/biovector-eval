@@ -80,6 +80,11 @@ MODELS: dict[str, ModelConfig] = {
         model_id="Alibaba-NLP/gte-Qwen2-1.5B-instruct",
         dimension=1536,
     ),
+    "minilm": ModelConfig(
+        name="MiniLM-L6-v2",
+        model_id="sentence-transformers/all-MiniLM-L6-v2",
+        dimension=384,
+    ),
 }
 
 # Legacy models (deprecated - see docs/decisions.md)

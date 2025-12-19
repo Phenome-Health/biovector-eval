@@ -64,7 +64,12 @@ def cmd_generate_ground_truth(args: argparse.Namespace) -> int:
 
     generator = HMDBGroundTruthGenerator(metabolites, seed=args.seed)
     dataset = generator.generate_dataset(
-        exact=args.exact, synonym=args.synonym, fuzzy=args.fuzzy, edge=args.edge
+        exact=args.exact,
+        synonym=args.synonym,
+        fuzzy=args.fuzzy,
+        greek=args.greek,
+        numeric=args.numeric,
+        special=args.special,
     )
     dataset.save(args.output)
     logger.info(f"Generated {len(dataset.queries)} queries -> {args.output}")
@@ -202,7 +207,15 @@ def main() -> int:
     gt.add_argument(
         "--fuzzy", type=int, default=100, help="Number of fuzzy match queries"
     )
-    gt.add_argument("--edge", type=int, default=100, help="Number of edge case queries")
+    gt.add_argument(
+        "--greek", type=int, default=100, help="Number of greek letter edge case queries"
+    )
+    gt.add_argument(
+        "--numeric", type=int, default=100, help="Number of numeric prefix edge case queries"
+    )
+    gt.add_argument(
+        "--special", type=int, default=100, help="Number of special prefix edge case queries"
+    )
     gt.add_argument("--seed", type=int, default=42, help="Random seed")
     gt.set_defaults(func=cmd_generate_ground_truth)
 
